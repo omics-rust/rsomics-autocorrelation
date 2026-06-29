@@ -65,9 +65,18 @@ products, the closest portable order; the residual is dominated by BLAS rounding
 Given the same autocovariances, the PACF Levinson-Durbin recursion (`ld`/`ldb`)
 is bit-faithful to statsmodels' own recursion, and the Yule-Walker methods
 (`yw`/`ywm`) reach the same Yule-Walker solution that statsmodels obtains via a
-LAPACK `solve`, agreeing to ~1e-14. The chi-square p-values and the Bartlett /
-1-√n confidence bounds go through ported cephes transcendental functions
-(`igamc`, `ndtri`) and match scipy to ~1e-13.
+LAPACK `solve`, agreeing to ~1e-14 on stationary series. The chi-square p-values
+and the Bartlett / 1-√n confidence bounds go through ported cephes transcendental
+functions (`igamc`, `ndtri`) and match scipy to ~1e-13.
+
+PACF carries one inherent boundary: the Yule-Walker / OLS solve is sensitive to
+the conditioning of the lag autocovariance matrix. On a near-unit-root
+(non-stationary) input such as a random walk the system is ill-conditioned, and
+the sub-ULP autocovariance differences from the BLAS rounding above are amplified
+through the solve to ~5e-11 (`yw`/`ld`) up to ~6e-8 (`ols`) relative versus
+statsmodels. This is conditioning, not an implementation error — any PACF solver
+diverges there and statsmodels is itself not reproducible — and such series are
+outside PACF's stationary domain. ACF and the Ljung-Box Q are unaffected.
 
 `tests/compat.rs` re-derives committed statsmodels goldens — AR(1) series at
 n=50 / n=5000 / n=10⁶ and a white-noise n=2000 series, across all ACF/PACF/Q
